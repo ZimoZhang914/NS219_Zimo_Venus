@@ -1,0 +1,7 @@
+Ground truth construction:
+  Method: marker-based, top signature wins (margin > 0.05, score > 0)
+  Confidently labeled cells: 12509 / 19001
+
+Performance metrics:
+  Adjusted Rand Index (ARI): 0.033
+  Normalized Mutual Information (NMI): 0.048
