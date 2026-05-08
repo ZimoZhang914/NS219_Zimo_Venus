@@ -1,0 +1,78 @@
+# =====================================================================
+# Default configuration for the microglia annotation pipeline.
+# Override on the command line:  --config configs/my_run.yaml
+# Any field not provided falls back to defaults in src/microglia_annotator/config.py
+# =====================================================================
+
+run_name: vineseq_microglia_v1
+output_dir: results/vineseq_microglia_v1
+seed: 42
+
+data:
+  # Path to the .h5ad we just saved (relative to the project root)
+  h5ad_path: data/vineseq_microglia_input.h5ad
+  tenx_dir: null
+
+  # We've already filtered to microglia, so set this so the pipeline doesn't try to re-filter
+  celltype_col: null
+  microglia_labels: []
+
+  # Columns we set in our preprocessing
+  donor_col: donor_id
+  condition_col: condition
+  ad_label: AD
+  control_label: Control
+
+qc:
+  min_genes_per_cell: 200
+  min_cells_per_gene: 3
+  max_mt_percent: 10              # microglia tolerate slightly higher mt%; tune as needed
+  max_counts: 50000
+
+preprocess:
+  n_top_genes: 3000
+  target_sum: 10000
+  scale: false                    # keep log1p, scaling is done inside the VAE if needed
+  batch_correction: harmony       # one of: none | harmony
+  batch_key: donor_id
+
+vae:
+  hidden_dims: [512, 256, 128]
+  latent_dim: 32
+  dropout: 0.1
+  likelihood: poisson             # poisson (raw counts) | mse (log-normalized)
+  beta: 1.0                       # KL weight
+  warmup_epochs: 10               # KL annealing
+  batch_size: 256
+  epochs: 100
+  lr: 1.0e-3
+  weight_decay: 1.0e-6
+  patience: 15                    # early stopping
+  val_fraction: 0.1
+
+clustering:
+  resolutions: [0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+  n_neighbors: 15
+
+classifier:
+  reference_label_col: cell_state # an existing fine-grained label column to train on
+  model: xgboost                  # xgboost | logistic | svc
+  use_optuna: true
+  optuna_trials: 0
+  test_fraction: 0.2
+  use_smote: true
+  confidence_threshold: 0.7
+
+dam:
+  # Built-in signatures live in dam_score.py. Add extras here if desired.
+  extra_signatures: {}            # name -> [gene1, gene2, ...]
+  test: wilcoxon                  # AD vs control enrichment test
+
+eval:
+  make_umap: true
+  umap_color_by:
+    - predicted_state
+    - DAM_score
+    - condition
+
+  save_h5ad: true
